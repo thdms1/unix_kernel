@@ -1,0 +1,20 @@
+5500: /*
+5501:  * One file structure is allocated
+5502:  * for each open/creat/pipe call.
+5503:  * Main use is to hold the read/write
+5504:  * pointer associated with each open
+5505:  * file.
+5506:  */
+5507: struct  file
+5508: {
+5509:         char    f_flag;
+5510:         char    f_count;        /* reference count */
+5511:         int     f_inode;        /* pointer to inode structure */
+5512:         char    *f_offset[2];   /* read/write character pointer */
+5513: } file[NFILE];
+5514: /* ---------------------------       */
+5515: 
+5516: /* flags */
+5517: #define FREAD   01
+5518: #define FWRITE  02
+5519: #define FPIPE   04

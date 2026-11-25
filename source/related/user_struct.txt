@@ -1,0 +1,46 @@
+0413: struct user
+0414: {
+0415:         int     u_rsav[2];              /* save r5,r6 when exchanging stacks */
+0416:         int     u_fsav[25];             /* save fp registers */
+0417:                                         /* rsav and fsav must be first in structure */
+0418:         char    u_segflg;               /* flag for IO; user or kernel space */
+0419:         char    u_error;                /* return error code */
+0420:         char    u_uid;                  /* effective user id */
+0421:         char    u_gid;                  /* effective group id */
+0422:         char    u_ruid;                 /* real user id */
+0423:         char    u_rgid;                 /* real group id */
+0424:         int     u_procp;                /* pointer to proc structure */
+0425:         char    *u_base;                /* base address for IO */
+0426:         char    *u_count;               /* bytes remaining for IO */
+0427:         char    *u_offset[2];           /* offset in file for IO */
+0428:         int     *u_cdir;                /* pointer to inode of current directory */
+0429:         char    u_dbuf[DIRSIZ];         /* current pathname component */
+0430:         char    *u_dirp;                /* current pointer to inode */
+0431:         struct  {                       /* current directory entry */
+0432:                 int     u_ino;
+0433:                 char    u_name[DIRSIZ];
+0434:         } u_dent;
+0435:         int     *u_pdir;                /* inode of parent directory of dirp */
+0436:         int     u_uisa[16];             /* prototype of segmentation addresses */
+0437:         int     u_uisd[16];             /* prototype of segmentation descriptors */
+0438:         int     u_ofile[NOFILE];        /* pointers to file structures of open files */
+0439:         int     u_arg[5];               /* arguments to current system call */
+0440:         int     u_tsize;                /* text size (*64) */
+0441:         int     u_dsize;                /* data size (*64) */
+0442:         int     u_ssize;                /* stack size (*64) */
+0443:         int     u_sep;                  /* flag for I and D separation */
+0444:         int     u_qsav[2];              /* label variable for quits and interrupts */
+0445:         int     u_ssav[2];              /* label variable for swapping */
+0446:         int     u_signal[NSIG];         /* disposition of signals */
+0447:         int     u_utime;                /* this process user time */
+0448:         int     u_stime;                /* this process system time */
+0449:         int     u_cutime[2];            /* sum of childs' utimes */
+0450:         int     u_cstime[2];            /* sum of childs' stimes */
+0451:         int     *u_ar0;                 /* address of users saved R0 */
+0452:         int     u_prof[4];              /* profile arguments */
+0453:         char    u_intflg;               /* catch intr from sys */
+0454:                                         /* kernel stack per user
+0455:                                          * extends from u + USIZE*64
+0456:                                          * backward not to reach here
+0457:                                          */
+0458: } u;

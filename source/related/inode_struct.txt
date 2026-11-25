@@ -1,0 +1,49 @@
+5650: /* The I node is the focus of all
+5651:  * file activity in unix. There is a unique
+5652:  * inode allocated for each active file,
+5653:  * each current directory, each mounted-on
+5654:  * file, text file, and the root. An inode is 'named'
+5655:  * by its dev/inumber pair. (iget/iget.c)
+5656:  * Data, from mode on, is read in
+5657:  * from permanent inode on volume.
+5658:  */
+5659: struct  inode
+5660: {
+5661:         char    i_flag;
+5662:         char    i_count;        /* reference count */
+5663:         int     i_dev;          /* device where inode resides */
+5664:         int     i_number;       /* i number, 1-to-1 with device address */
+5665: 
+5666:         int     i_mode;
+5667:         char    i_nlink;        /* directory entries */
+5668:         char    i_uid;          /* owner */
+5669:         char    i_gid;          /* group of owner */
+5670:         char    i_size0;        /* most significant of size */
+5671:         char    *i_size1;       /* least sig */
+5672:         int     i_addr[8];      /* device addresses constituting file */
+5673:         int     i_lastr;        /* last logical block read (for read-ahead) */
+5674: 
+5675: } inode[NINODE];
+5676: /* ---------------------------       */
+5677: 
+5678: /* flags */
+5679: #define ILOCK   01              /* inode is locked */
+5680: #define IUPD    02              /* inode has been modified */
+5681: #define IACC    04              /* inode access time to be updated */
+5682: #define IMOUNT  010             /* inode is mounted on */
+5683: #define IWANT   020             /* some process waiting on lock */
+5684: #define ITEXT   040             /* inode is pure text prototype */
+5685: 
+5686: /* modes */
+5687: #define IALLOC  0100000         /* file is used */
+5688: #define IFMT    060000          /* type of file */
+5689: #define         IFDIR   040000  /* directory */
+5690: #define         IFCHR   020000  /* character special */
+5691: #define         IFBLK   060000  /* block special, 0 is regular */
+5692: #define ILARG   010000          /* large addressing algorithm */
+5693: #define ISUID   04000           /* set user id on execution */
+5694: #define ISGID   02000           /* set group id on execution */
+5695: #define ISVTX   01000           /* save swapped text even after use */
+5696: #define IREAD   0400            /* read, write, execute permissions */
+5697: #define IWRITE  0200
+5698: #define IEXEC   0100

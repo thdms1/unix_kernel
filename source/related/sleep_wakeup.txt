@@ -1,0 +1,73 @@
+2055: /*
+2056:  * Give up the processor till a wakeup occurs
+2057:  * on chan, at which time the process
+2058:  * enters the scheduling queue at priority pri.
+2059:  * The most important effect of pri is that when
+2060:  * pri<0 a signal cannot disturb the sleep;
+2061:  * if pri>=0 signals will be processed.
+2062:  * Callers of this routine must be prepared for
+2063:  * premature return, and check that the reason for
+2064:  * sleeping has gone away.
+2065:  */
+2066: sleep(chan, pri)
+2067: {
+2068:         register *rp, s;
+2069: 
+2070:         s = PS->integ;
+2071:         rp = u.u_procp;
+2072:         if(pri >= 0) {
+2073:                 if(issig())
+2074:                         goto psig;
+2075:                 spl6();
+2076:                 rp->p_wchan = chan;
+2077:                 rp->p_stat = SWAIT;
+2078:                 rp->p_pri = pri;
+2079:                 spl0();
+2080:                 if(runin != 0) {
+2081:                         runin = 0;
+2082:                         wakeup(&runin);
+2083:                 }
+2084:                 swtch();
+2085:                 if(issig())
+2086:                         goto psig;
+2087:         } else {
+2088:                 spl6();
+2089:                 rp->p_wchan = chan;
+2090:                 rp->p_stat = SSLEEP;
+2091:                 rp->p_pri = pri;
+2092:                 spl0();
+2093:                 swtch();
+2094:         }
+2095:         PS->integ = s;
+2096:         return;
+2097: 
+2098:         /*
+2099:          * If priority was low (>=0) and
+2100:          * there has been a signal,
+2101:          * execute non-local goto to
+2102:          * the qsav location.
+2103:          * (see trap1/trap.c)
+2104:          */
+2105: psig:
+2106:         aretu(u.u_qsav);
+2107: }
+2108: /* ---------------------------       */
+2109: 
+2110: /*
+2111:  * Wake up all processes sleeping on chan.
+2112:  */
+2113: wakeup(chan)
+2114: {
+2115:         register struct proc *p;
+2116:         register c, i;
+2117: 
+2118:         c = chan;
+2119:         p = &proc[0];
+2120:         i = NPROC;
+2121:         do {
+2122:                 if(p->p_wchan == c) {
+2123:                         setrun(p);
+2124:                 }
+2125:                 p++;
+2126:         } while(--i);
+2127: }

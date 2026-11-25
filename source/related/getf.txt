@@ -1,0 +1,22 @@
+6611: 
+6612: /*
+6613:  * Convert a user supplied
+6614:  * file descriptor into a pointer
+6615:  * to a file structure.
+6616:  * Only task is to check range
+6617:  * of the descriptor.
+6618:  */
+6619: getf(f)
+6620: {
+6621:         register *fp, rf;
+6622: 
+6623:         rf = f;
+6624:         if(rf<0 || rf>=NOFILE)
+6625:                 goto bad;
+6626:         fp = u.u_ofile[rf];
+6627:         if(fp != NULL)
+6628:                 return(fp);
+6629: bad:
+6630:         u.u_error = EBADF;
+6631:         return(NULL);
+6632: }

@@ -1,0 +1,45 @@
+6821: /*
+6822:  * Allocate a user file descriptor.
+6823:  */
+6824: ufalloc()
+6825: {
+6826:         register i;
+6827: 
+6828:         for (i=0; i<NOFILE; i++)
+6829:                 if (u.u_ofile[i] == NULL) {
+6830:                         u.u_ar0[R0] = i;
+6831:                         return(i);
+6832:                 }
+6833:         u.u_error = EMFILE;
+6834:         return(-1);
+6835: }
+6836: /* ---------------------------       */
+6837: 
+6838: /*
+6839:  * Allocate a user file descriptor
+6840:  * and a file structure.
+6841:  * Initialize the descriptor
+6842:  * to point at the file structure.
+6843:  *
+6844:  * no file -- if there are no available
+6845:  *      file structures.
+6846:  */
+6847: falloc()
+6848: {
+6849:         register struct file *fp;
+6850:         register i;
+6851: 
+6852:         if ((i = ufalloc()) < 0)
+6853:                 return(NULL);
+6854:         for (fp = &file[0]; fp < &file[NFILE]; fp++)
+6855:                 if (fp->f_count==0) {
+6856:                         u.u_ofile[i] = fp;
+6857:                         fp->f_count++;
+6858:                         fp->f_offset[0] = 0;
+6859:                         fp->f_offset[1] = 0;
+6860:                         return(fp);
+6861:                 }
+6862:         printf("no file\n");
+6863:         u.u_error = ENFILE;
+6864:         return(NULL);
+6865: }

@@ -1,0 +1,195 @@
+7700: #include "../param.h"
+7701: #include "../systm.h"
+7702: #include "../user.h"
+7703: #include "../inode.h"
+7704: #include "../file.h"
+7705: #include "../reg.h"
+7706: 
+7707: /* 
+7708:  * Max allowable buffering per pipe.
+7709:  * This is also the max size of the
+7710:  * file created to implement the pipe.
+7711:  * If this size is bigger than 4096,
+7712:  * pipes will be implemented in LARG
+7713:  * files, which is probably not good.
+7714:  */
+7715: #define PIPSIZ  4096
+7716: 
+7717: /*
+7718:  * The sys-pipe entry.
+7719:  * Allocate an inode on the root device.
+7720:  * Allocate 2 file structures.
+7721:  * Put it all together with flags.
+7722:  */
+7723: pipe()
+7724: {
+7725:         register *ip, *rf, *wf;
+7726:         int r;
+7727: 
+7728:         ip = ialloc(rootdev);
+7729:         if(ip == NULL)
+7730:                 return;
+7731:         rf = falloc();
+7732:         if(rf == NULL) {
+7733:                 iput(ip);
+7734:                 return;
+7735:         }
+7736:         r = u.u_ar0[R0];
+7737:         wf = falloc();
+7738:         if(wf == NULL) {
+7739:                 rf->f_count = 0;
+7740:                 u.u_ofile[r] = NULL;
+7741:                 iput(ip);
+7742:                 return;
+7743:         }
+7744:         u.u_ar0[R1] = u.u_ar0[R0];
+7745:         u.u_ar0[R0] = r;
+7746:         wf->f_flag = FWRITE|FPIPE;
+7747:         wf->f_inode = ip;
+7748:         rf->f_flag = FREAD|FPIPE;
+7749:         rf->f_inode = ip;
+7750:         ip->i_count = 2;
+7751:         ip->i_flag = IACC|IUPD;
+7752:         ip->i_mode = IALLOC;
+7753: }
+7754: /* ---------------------------       */
+7755: 
+7756: /* Read call directed to a pipe.
+7757:  */
+7758: readp(fp)
+7759: int *fp;
+7760: {
+7761:         register *rp, *ip;
+7762: 
+7763:         rp = fp;
+7764:         ip = rp->f_inode;
+7765: loop:
+7766:         /* Very conservative locking.
+7767:          */
+7768:         plock(ip);
+7769:         /* If the head (read) has caught up with
+7770:          * the tail (write), reset both to 0.
+7771:          */
+7772:         if(rp->f_offset[1] == ip->i_size1) {
+7773:                 if(rp->f_offset[1] != 0) {
+7774:                         rp->f_offset[1] = 0;
+7775:                         ip->i_size1 = 0;
+7776:                         if(ip->i_mode&IWRITE) {
+7777:                                 ip->i_mode =& ~IWRITE;
+7778:                                 wakeup(ip+1);
+7779:                         }
+7780:                 }
+7781: 
+7782:                 /* If there are not both reader and
+7783:                  * writer active, return without
+7784:                  * satisfying read.
+7785:                  */
+7786:                 prele(ip);
+7787:                 if(ip->i_count < 2)
+7788:                         return;
+7789:                 ip->i_mode =| IREAD;
+7790:                 sleep(ip+2, PPIPE);
+7791:                 goto loop;
+7792:         }
+7793:         /* Read and return
+7794:          */
+7795:         u.u_offset[0] = 0;
+7796:         u.u_offset[1] = rp->f_offset[1];
+7797:         readi(ip);
+7798:         rp->f_offset[1] = u.u_offset[1];
+7799:         prele(ip);
+7800: }
+7801: /* ---------------------------       */
+7802: 
+7803: /* Write call directed to a pipe.
+7804:  */
+7805: writep(fp)
+7806: {
+7807:         register *rp, *ip, c;
+7808: 
+7809:         rp = fp;
+7810:         ip = rp->f_inode;
+7811:         c = u.u_count;
+7812: loop:
+7813:         /* If all done, return.
+7814:          */
+7815:         plock(ip);
+7816:         if(c == 0) {
+7817:                 prele(ip);
+7818:                 u.u_count = 0;
+7819:                 return;
+7820:         }
+7821:         /* If there are not both read and
+7822:          * write sides of the pipe active,
+7823:          * return error and signal too.
+7824:          */
+7825:         if(ip->i_count < 2) {
+7826:                 prele(ip);
+7827:                 u.u_error = EPIPE;
+7828:                 psignal(u.u_procp, SIGPIPE);
+7829:                 return;
+7830:         }
+7831:         /* If the pipe is full,
+7832:          * wait for reads to deplete
+7833:          * and truncate it.
+7834:          */
+7835:         if(ip->i_size1 == PIPSIZ) {
+7836:                 ip->i_mode =| IWRITE;
+7837:                 prele(ip);
+7838:                 sleep(ip+1, PPIPE);
+7839:                 goto loop;
+7840:         }
+7841:         /* Write what is possible and
+7842:          * loop back.
+7843:          */
+7844:         u.u_offset[0] = 0;
+7845:         u.u_offset[1] = ip->i_size1;
+7846:         u.u_count = min(c, PIPSIZ-u.u_offset[1]);
+7847:         c =- u.u_count;
+7848:         writei(ip);
+7849:         prele(ip);
+7850:         if(ip->i_mode&IREAD) {
+7851:                 ip->i_mode =& ~IREAD;
+7852:                 wakeup(ip+2);
+7853:         }
+7854:         goto loop;
+7855: }
+7856: /* ---------------------------       */
+7857: 
+7858: /* Lock a pipe.
+7859:  * If its already locked,
+7860:  * set the WANT bit and sleep.
+7861:  */
+7862: plock(ip)
+7863: int *ip;
+7864: {
+7865:         register *rp;
+7866: 
+7867:         rp = ip;
+7868:         while(rp->i_flag&ILOCK) {
+7869:                 rp->i_flag =| IWANT;
+7870:                 sleep(rp, PPIPE);
+7871:         }
+7872:         rp->i_flag =| ILOCK;
+7873: }
+7874: /* ---------------------------       */
+7875: 
+7876: /* Unlock a pipe.
+7877:  * If WANT bit is on,
+7878:  * wakeup.
+7879:  * This routine is also used
+7880:  * to unlock inodes in general.
+7881:  */
+7882: prele(ip)
+7883: int *ip;
+7884: {
+7885:         register *rp;
+7886: 
+7887:         rp = ip;
+7888:         rp->i_flag =& ~ILOCK;
+7889:         if(rp->i_flag&IWANT) {
+7890:                 rp->i_flag =& ~IWANT;
+7891:                 wakeup(rp);
+7892:         }
+7893: }
+7894: /* ---------------------------       */

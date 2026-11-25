@@ -1,0 +1,24 @@
+6635: /*
+6636:  * Internal form of close.
+6637:  * Decrement reference count on
+6638:  * file structure and call closei
+6639:  * on last closef.
+6640:  * Also make sure the pipe protocol
+6641:  * does not constipate.
+6642:  */
+6643: closef(fp)
+6644: int *fp;
+6645: {
+6646:         register *rfp, *ip;
+6647: 
+6648:         rfp = fp;
+6649:         if(rfp->f_flag&FPIPE) {
+6650:                 ip = rfp->f_inode;
+6651:                 ip->i_mode =& ~(IREAD|IWRITE);
+6652:                 wakeup(ip+1);
+6653:                 wakeup(ip+2);
+6654:         }
+6655:         if(rfp->f_count <= 1)
+6656:                 closei(rfp->f_inode, rfp->f_flag&FWRITE);
+6657:         rfp->f_count--;
+6658: }

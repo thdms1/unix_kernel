@@ -1,0 +1,29 @@
+2751:         case 6+USER: /* sys call */
+2752:                 u.u_error = 0;
+2753:                 ps =& ~EBIT;
+2754:                 callp = &sysent[fuiword(pc-2)&077];
+2755:                 if (callp == sysent) { /* indirect */
+2756:                         a = fuiword(pc);
+2757:                         pc =+ 2;
+2758:                         i = fuword(a);
+2759:                         if ((i & ~077) != SYS)
+2760:                                 i = 077;        /* illegal */
+2761:                         callp = &sysent[i&077];
+2762:                         for(i=0; i<callp->count; i++)
+2763:                                 u.u_arg[i] = fuword(a =+ 2);
+2764:                 } else {
+2765:                         for(i=0; i<callp->count; i++) {
+2766:                                 u.u_arg[i] = fuiword(pc);
+2767:                                 pc =+ 2;
+2768:                         }
+2769:                 }
+2770:                 u.u_dirp = u.u_arg[0];
+2771:                 trap1(callp->call);
+
+2950:         0, &getswit,                    /* 38 = switch */
+2951:         0, &nosys,                      /* 39 = x */
+2952:         0, &nosys,                      /* 40 = x */
+2953:         0, &dup,                        /* 41 = dup */
+2954:         0, &pipe,                       /* 42 = pipe */
+2955:         1, &times,                      /* 43 = times */
+2956:         4, &profil,                     /* 44 = prof */

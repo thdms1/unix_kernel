@@ -1,0 +1,107 @@
+1532: /*
+1533:  * Initialization code.
+1534:  * Called from m40.s or m45.s as
+1535:  * soon as a stack and segmentation
+1536:  * have been established.
+1537:  * Functions:
+1538:  *      clear and free user core
+1539:  *      find which clock is configured
+1540:  *      hand craft 0th process
+1541:  *      call all initialization routines
+1542:  *      fork - process 0 to schedule
+1543:  *           - process 1 execute bootstrap
+1544:  *
+1545:  * panic: no clock -- neither clock responds
+1546:  * loop at loc 6 in user mode -- /etc/init
+1547:  *      cannot be executed.
+1548:  */
+1549: 
+1550: main()
+1551: {
+1552:         extern schar;
+1553:         register i, *p;
+1554: 
+1555:         /*
+1556:          * zero and free all of core
+1557:          */
+1558: 
+1559:         updlock = 0;
+1560:         i = *ka6 + USIZE;
+1561:         UISD->r[0] = 077406;
+1562:         for(;;) {
+1563:                 UISA->r[0] = i;
+1564:                 if(fuibyte(0) < 0)
+1565:                         break;
+1566:                 clearseg(i);
+1567:                 maxmem++;
+1568:                 mfree(coremap, 1, i);
+1569:                 i++;
+1570:         }
+1571:         if(cputype == 70)
+1572:         for(i=0; i<62; i=+2) {
+1573:                 UBMAP->r[i] = i<<12;
+1574:                 UBMAP->r[i+1] = 0;
+1575:         }
+1576:         printf("mem = %l\n", maxmem*5/16);
+1577: 
+1578: 
+1579: 
+1580: 
+1581: 
+1582:         maxmem = min(maxmem, MAXMEM);
+1583:         mfree(swapmap, nswap, swplo);
+1584: 
+1585:         /*
+1586:          * set up system process
+1587:          */
+1588: 
+1589:         proc[0].p_addr = *ka6;
+1590:         proc[0].p_size = USIZE;
+1591:         proc[0].p_stat = SRUN;
+1592:         proc[0].p_flag =| SLOAD|SSYS;
+1593:         u.u_procp = &proc[0];
+1594: 
+1595:         /*
+1596:          * determine clock
+1597:          */
+1598: 
+1599:         UISA->r[7] = ka6[1]; /* io segment */
+1600:         UISD->r[7] = 077406;
+1601:         lks = CLOCK1;
+1602:         if(fuiword(lks) == -1) {
+1603:                 lks = CLOCK2;
+1604:                 if(fuiword(lks) == -1)
+1605:                         panic("no clock");
+1606:         }
+1607: 
+1608:         /*
+1609:          * set up 'known' i-nodes
+1610:          */
+1611: 
+1612:         *lks = 0115;
+1613:         cinit();
+1614:         binit();
+1615:         iinit();
+1616:         rootdir = iget(rootdev, ROOTINO);
+1617:         rootdir->i_flag =& ~ILOCK;
+1618:         u.u_cdir = iget(rootdev, ROOTINO);
+1619:         u.u_cdir->i_flag =& ~ILOCK;
+1620: 
+1621:         /*
+1622:          * make init process
+1623:          * enter scheduling loop
+1624:          * with system process
+1625:          */
+1626: 
+1627:         if(newproc()) {
+1628:                 expand(USIZE+1);
+1629:                 estabur(0, 1, 0, 0);
+1630:                 copyout(icode, 0, sizeof icode);
+1631:                 /*
+1632:                  * Return goes to loc. 0 of user init
+1633:                  * code just copied out.
+1634:                  */
+1635:                 return;
+1636:         }
+1637:         sched();
+1638: }
