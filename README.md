@@ -7,6 +7,19 @@
 - 📄 보고서 PDF: [docs/report.pdf](docs/report.pdf)
 - 📝 보고서 원고(Markdown): [docs/report.md](docs/report.md)
 
+## 함수별 분석 문서
+
+| 문서 | 내용 |
+|---|---|
+| [01-overview.md](analysis/01-overview.md) | 서론, 배경 지식(fd → file → inode, `main()`에서 `pipe()`까지), `PIPSIZ`와 옛날 C 문법 |
+| [02-pipe.md](analysis/02-pipe.md) | `pipe()` 파이프 생성 (7723–7753) |
+| [03-plock-prele.md](analysis/03-plock-prele.md) | `plock()` / `prele()` 잠금, `sleep` / `wakeup` (7858–7893) |
+| [04-readp.md](analysis/04-readp.md) | `readp()` 파이프에서 읽기 (7756–7800) |
+| [05-writep.md](analysis/05-writep.md) | `writep()` 파이프에 쓰기 (7803–7855) |
+| [06-flow-conclusion.md](analysis/06-flow-conclusion.md) | 운영체제 개념 연결, 실행 흐름 예제, 결론, 참고 자료 |
+
+분석 문서는 `docs/report.md`를 장별로 나눈 것으로, 내용은 보고서와 같습니다.
+
 ## 분석 범위
 
 | 구분 | Lions 줄 번호 | 내용 | 전체 줄 | 실제 코드 줄 |
@@ -42,6 +55,13 @@
 
 ```
 ├── README.md
+├── analysis/           함수별 분석 문서 (보고서를 장별로 나눔)
+│   ├── 01-overview.md
+│   ├── 02-pipe.md
+│   ├── 03-plock-prele.md
+│   ├── 04-readp.md
+│   ├── 05-writep.md
+│   └── 06-flow-conclusion.md
 ├── docs/
 │   ├── report.pdf      제출용 보고서
 │   └── report.md       보고서 원고
